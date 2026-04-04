@@ -1,0 +1,26 @@
+name: Despliegue a PRODUCCIÓN
+
+on:
+  push:
+    branches:
+      - production # Solo se activa cuando mandas cambios a esta rama
+
+jobs:
+  web-deploy:
+    name: Deploy Real
+    runs-on: ubuntu-latest
+    steps:
+    - name: 🚚 Get latest code
+      uses: actions/checkout@v3
+
+    - name: 📂 Sync files to PROD
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME_PROD }} # El nuevo secreto
+        password: ${{ secrets.FTP_PASSWORD_PROD }} # El nuevo secreto
+        server-dir: ./ 
+        exclude: |
+          **/.git*
+          **/.github*
+          config.php

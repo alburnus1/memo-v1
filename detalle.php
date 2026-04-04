@@ -2,6 +2,31 @@
 include 'config.php'; 
 session_start();
 
+
+// Lógica de Match de Partners
+$indicaciones_texto = strtolower($consulta['indicaciones']);
+$partner_sugerido = null;
+
+// Mapeo de palabras clave a tipos de partner
+$keywords = [
+    'kinesiologia' => ['kine', 'kinesiologo', 'sesiones', 'rehabilitacion'],
+    'farmacia'     => ['paracetamol', 'ibuprofeno', 'receta', 'comprar', 'clorfenamina'],
+    'laboratorio'  => ['examen', 'radiografia', 'sangre', 'rayos x', 'scann'],
+    'psicologia'   => ['terapia', 'psicologo', 'salud mental']
+];
+
+foreach ($keywords as $tipo => $words) {
+    foreach ($words as $word) {
+        if (strpos($indicaciones_texto, $word) !== false) {
+            // Buscamos un partner de ese tipo que sea Premium
+            $stmt_p = $pdo->prepare("SELECT * FROM partners WHERE tipo = ? AND es_premium = 1 LIMIT 1");
+            $stmt_p->execute([$tipo]);
+            $partner_sugerido = $stmt_p->fetch();
+            break 2;
+        }
+    }
+}
+
 if(!isset($_SESSION['user']) || !isset($_GET['id'])) { header("Location: index.php"); exit; }
 
 $id = intval($_GET['id']);
@@ -137,6 +162,20 @@ $texto = $data['indicaciones'];
             if(!$hayDer) echo "<p style='font-size:13px; color:#cbd5e1;'>No se detectaron derivaciones.</p>";
             ?>
         </div>
+        
+<?php if ($partner_sugerido): ?>
+<div style="background: #f0f7ff; border: 1px solid #007bff; padding: 15px; border-radius: 10px; margin-top: 20px;">
+    <h4 style="color: #0056b3; margin-top: 0;">🎁 Beneficio Exclusivo</h4>
+    <p>Según tu indicación de <strong><?php echo ucfirst($partner_sugerido['tipo']); ?></strong>:</p>
+    <p><strong><?php echo $partner_sugerido['nombre']; ?></strong> ofrece: 
+       <span style="color: #28a745; font-weight: bold;"><?php echo $partner_sugerido['beneficio_texto']; ?></span>
+    </p>
+    <a href="agendar.php?id=<?php echo $partner_sugerido['id']; ?>" 
+       style="display: block; background: #007bff; color: white; text-align: center; padding: 10px; border-radius: 5px; text-decoration: none; font-weight: bold;">
+       Agendar Hora / Contactar
+    </a>
+</div>
+<?php endif; ?>
 
         <div class="audio-box">
             <span class="label">Audio Original</span>
