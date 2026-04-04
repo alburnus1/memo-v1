@@ -1,0 +1,10 @@
+# Configuración local
+config.php
+
+# Archivos temporales y audios
+uploads/
+*.wav
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
