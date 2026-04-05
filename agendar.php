@@ -7,21 +7,25 @@ require_once 'config.php';
 $id_partner = isset($_GET['id']) ? intval($_GET['id']) : 0;
 if ($id_partner <= 0) { header("Location: index.php"); exit(); }
 
-// Consultar Partner
+// 1. Consultar Partner (Corregido)
 $query = "SELECT * FROM partners WHERE id = ? AND activo = 1 LIMIT 1";
 $stmt = $conn->prepare($query);
 $stmt->bind_param("i", $id_partner);
 $stmt->execute();
+$result = $stmt->get_result(); // <--- ESTA ES LA LÍNEA QUE FALTABA
 $partner = $result->fetch_assoc();
+
 if (!$partner) { header("Location: index.php"); exit(); }
 
+$nombre_partner = htmlspecialchars($partner['nombre']);
 $mensaje = "";
+
+// 2. Lógica de Guardado
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['agendar'])) {
     $fecha = $_POST['fecha'];
     $hora = $_POST['hora'];
     $nombre = "Usuario de Prueba"; 
 
-    // OJO: Asegúrate que los nombres coincidan con el SQL que ejecutaste
     $insert = "INSERT INTO citas (partner_id, nombre_paciente, fecha_cita, hora_cita, estado) VALUES (?, ?, ?, ?, 'confirmada')";
     $stmt_ins = $conn->prepare($insert);
     
@@ -38,22 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['agendar'])) {
 }
 ?>
 
-// Lógica de Guardado (Procesar Formulario)
-$mensaje = "";
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['agendar'])) {
-    $fecha = $_POST['fecha'];
-    $hora = $_POST['hora'];
-    $nombre = "Usuario de Prueba"; // Aquí luego irá el nombre del usuario logueado
 
-    $insert = "INSERT INTO citas (partner_id, nombre_paciente, fecha_cita, hora_cita) VALUES (?, ?, ?, ?)";
-    $stmt_ins = $conn->prepare($insert);
-    $stmt_ins->bind_param("isss", $id_partner, $nombre, $fecha, $hora);
-    
-    if ($stmt_ins->execute()) {
-        $mensaje = "✅ Cita agendada con éxito";
-    }
-}
-?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
