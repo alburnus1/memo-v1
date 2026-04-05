@@ -4,6 +4,7 @@ session_start();
 // Asegúrate de que esta API KEY sea la correcta (termina en 88e en tu upload_audio)
 $apiKey = "19aa781dc1f7406ba58faece251dc77e"; 
 
+
 // --- LOGIN / REGISTRO SIMPLE ---
 if (isset($_POST['registro'])) {
     $nombre = $conn->real_escape_string($_POST['nombre']);
@@ -68,6 +69,13 @@ if (isset($_SESSION['user'])) {
         input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 12px; border: 1px solid #ddd; outline: none; box-sizing: border-box; }
         .btn-login { background: var(--accent); color: white; border: none; padding: 14px; border-radius: 12px; width: 100%; font-weight: 600; cursor: pointer; }
     </style>
+    <div style="position: absolute; top: 20px; right: 20px;">
+    <?php if(isset($_SESSION['user_id'])): ?>
+        <a href="logout.php" style="text-decoration:none; color:#8e8e93; font-size:12px; font-weight:600; background:#f0f0f0; padding:8px 12px; border-radius:12px;">
+            Cerrar Sesión
+        </a>
+    <?php endif; ?>
+</div>
 </head>
 <body>
 

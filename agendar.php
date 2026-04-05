@@ -60,6 +60,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['agendar'])) {
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <div style="position: absolute; top: 20px; right: 20px;">
+    <?php if(isset($_SESSION['user_id'])): ?>
+        <a href="logout.php" style="text-decoration:none; color:#8e8e93; font-size:12px; font-weight:600; background:#f0f0f0; padding:8px 12px; border-radius:12px;">
+            Cerrar Sesión
+        </a>
+    <?php endif; ?>
+</div>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agendar con <?php echo $nombre; ?> | memo.</title>
