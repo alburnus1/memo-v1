@@ -1,45 +1,52 @@
 <?php
-session_start();
-include 'config.php';
+// 1. Configuración de errores para ver qué pasa realmente
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-// Limpieza de salida para evitar errores de JSON
-ob_start();
+include 'config.php';
+session_start();
+
+// 2. Limpiar cualquier salida extra para que solo devuelva JSON
+if (ob_get_length()) ob_clean();
 header('Content-Type: application/json');
 
-$nombre = $_POST['nombre'] ?? 'Usuario';
-$email  = trim($_POST['email'] ?? '');
-$pass   = trim($_POST['password'] ?? '');
+try {
+    $nombre = $_POST['nombre'] ?? 'Usuario';
+    $email  = isset($_POST['email']) ? trim($_POST['email']) : '';
+    $pass   = isset($_POST['password']) ? trim($_POST['password']) : '';
 
-if (empty($email) || empty($pass)) {
-    ob_end_clean();
-    echo json_encode(['success' => false, 'message' => 'Faltan datos']);
-    exit;
-}
+    if (empty($email) || empty($pass)) {
+        echo json_encode(['success' => false, 'message' => 'Email o contraseña vacíos']);
+        exit;
+    }
 
-$password_hash = password_hash($pass, PASSWORD_BCRYPT);
-
-// Intentar Registro
-$sql = "INSERT INTO usuarios (nombre, email, password, rol) VALUES ('$nombre', '$email', '$password_hash', 'paciente')";
-
-if ($conn->query($sql)) {
-    $_SESSION['user'] = ['id' => $conn->insert_id, 'nombre' => $nombre];
-    ob_end_clean();
-    echo json_encode(['success' => true]);
-} else {
-    // Si falla, intentar Login (el correo ya existe)
-    $res = $conn->query("SELECT id, nombre, password FROM usuarios WHERE email = '$email'");
-    if ($res && $res->num_rows > 0) {
-        $u = $res->fetch_assoc();
+    // 3. Verificar si el usuario ya existe
+    $check = $conn->query("SELECT id, nombre, password FROM usuarios WHERE email = '$email'");
+    
+    if ($check && $check->num_rows > 0) {
+        // LOGIN: El usuario ya existe, verificamos pass
+        $u = $check->fetch_assoc();
         if (password_verify($pass, $u['password'])) {
             $_SESSION['user'] = ['id' => $u['id'], 'nombre' => $u['nombre']];
-            ob_end_clean();
-            echo json_encode(['success' => true]);
+            echo json_encode(['success' => true, 'action' => 'login']);
         } else {
-            ob_end_clean();
-            echo json_encode(['success' => false, 'message' => 'Contraseña incorrecta']);
+            echo json_encode(['success' => false, 'message' => 'La contraseña es incorrecta']);
         }
     } else {
-        ob_end_clean();
-        echo json_encode(['success' => false, 'message' => 'Error: ' . $conn->error]);
+        // REGISTRO: Usuario nuevo
+        $hash = password_hash($pass, PASSWORD_BCRYPT);
+        $ins = "INSERT INTO usuarios (nombre, email, password) VALUES ('$nombre', '$email', '$hash')";
+        
+        if ($conn->query($ins)) {
+            $_SESSION['user'] = ['id' => $conn->insert_id, 'nombre' => $nombre];
+            echo json_encode(['success' => true, 'action' => 'register']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Error al insertar: ' . $conn->error]);
+        }
     }
+
+} catch (Exception $e) {
+    echo json_encode(['success' => false, 'message' => 'Error fatal: ' . $e->getMessage()]);
 }
+exit;
