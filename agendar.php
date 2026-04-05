@@ -1,5 +1,9 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 require_once 'config.php';
+
 $id_partner = isset($_GET['id']) ? intval($_GET['id']) : 0;
 if ($id_partner <= 0) { header("Location: index.php"); exit(); }
 
@@ -10,6 +14,29 @@ $stmt->bind_param("i", $id_partner);
 $stmt->execute();
 $partner = $result->fetch_assoc();
 if (!$partner) { header("Location: index.php"); exit(); }
+
+$mensaje = "";
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['agendar'])) {
+    $fecha = $_POST['fecha'];
+    $hora = $_POST['hora'];
+    $nombre = "Usuario de Prueba"; 
+
+    // OJO: Asegúrate que los nombres coincidan con el SQL que ejecutaste
+    $insert = "INSERT INTO citas (partner_id, nombre_paciente, fecha_cita, hora_cita, estado) VALUES (?, ?, ?, ?, 'confirmada')";
+    $stmt_ins = $conn->prepare($insert);
+    
+    if ($stmt_ins) {
+        $stmt_ins->bind_param("isss", $id_partner, $nombre, $fecha, $hora);
+        if ($stmt_ins->execute()) {
+            $mensaje = "✅ Cita agendada con éxito";
+        } else {
+            $mensaje = "❌ Error al agendar: " . $stmt_ins->error;
+        }
+    } else {
+        $mensaje = "❌ Error en la consulta: " . $conn->error;
+    }
+}
+?>
 
 // Lógica de Guardado (Procesar Formulario)
 $mensaje = "";
