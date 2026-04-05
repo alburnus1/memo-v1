@@ -127,7 +127,9 @@ if (isset($_SESSION['user'])) {
         <input type="email" id="reg_email" placeholder="tu@email.com">
         <input type="password" id="reg_pass" placeholder="Crea una contraseña">
         
-        <button onclick="registrarYSubir()" id="btnModalRegistro" class="btn-modal">Guardar y ver resultado</button>
+       <button type="button" onclick="registrarYSubir()" id="btnModalRegistro" class="btn-modal">
+    Guardar y ver resultado
+</button>
     </div>
 </div>
 

@@ -2,44 +2,39 @@
 session_start();
 include 'config.php';
 
-// Limpiamos errores previos para enviar un JSON limpio
+// Desactivamos cualquier error de texto que ensucie el JSON
 error_reporting(0);
 header('Content-Type: application/json');
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nombre = $conn->real_escape_string($_POST['nombre'] ?? 'Usuario');
-    $email  = $conn->real_escape_string($_POST['email'] ?? '');
-    $pass   = $_POST['password'] ?? '';
+$nombre = $_POST['nombre'] ?? 'Usuario';
+$email  = $_POST['email'] ?? '';
+$pass   = $_POST['password'] ?? '';
 
-    if (empty($email) || empty($pass)) {
-        echo json_encode(['success' => false, 'message' => 'Email y contraseña requeridos']);
-        exit;
-    }
+if (!$email || !$pass) {
+    echo json_encode(['success' => false, 'message' => 'Faltan datos']);
+    exit;
+}
 
-    // Encriptamos la contraseña para seguridad
-    $password_hash = password_hash($pass, PASSWORD_BCRYPT);
+$password_hash = password_hash($pass, PASSWORD_BCRYPT);
 
-    // Intentamos insertar
-    $sql = "INSERT INTO usuarios (nombre, email, password, rol) VALUES ('$nombre', '$email', '$password_hash', 'paciente')";
-    
-    if ($conn->query($sql)) {
-        $new_id = $conn->insert_id;
-        $_SESSION['user'] = ['id' => $new_id, 'nombre' => $nombre];
-        echo json_encode(['success' => true]);
-    } else {
-        // Si el correo ya existe, intentamos loguear en lugar de registrar
-        $res = $conn->query("SELECT id, nombre, password FROM usuarios WHERE email = '$email'");
-        if ($res->num_rows > 0) {
-            $user = $res->fetch_assoc();
-            if (password_verify($pass, $user['password'])) {
-                $_SESSION['user'] = ['id' => $user['id'], 'nombre' => $user['nombre']];
-                echo json_encode(['success' => true]);
-            } else {
-                echo json_encode(['success' => false, 'message' => 'Contraseña incorrecta para este email.']);
-            }
+// Intentamos insertar. Si falla (porque el email existe), intentamos loguear.
+$sql = "INSERT INTO usuarios (nombre, email, password, rol) VALUES ('$nombre', '$email', '$password_hash', 'paciente')";
+
+if ($conn->query($sql)) {
+    $_SESSION['user'] = ['id' => $conn->insert_id, 'nombre' => $nombre];
+    echo json_encode(['success' => true]);
+} else {
+    // Si el INSERT falló, es probable que el email ya exista. Buscamos al usuario.
+    $res = $conn->query("SELECT id, nombre, password FROM usuarios WHERE email = '$email'");
+    if ($res && $res->num_rows > 0) {
+        $u = $res->fetch_assoc();
+        if (password_verify($pass, $u['password'])) {
+            $_SESSION['user'] = ['id' => $u['id'], 'nombre' => $u['nombre']];
+            echo json_encode(['success' => true]);
         } else {
-            echo json_encode(['success' => false, 'message' => 'Error al crear cuenta.']);
+            echo json_encode(['success' => false, 'message' => 'La contraseña es incorrecta']);
         }
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Error al crear la cuenta']);
     }
 }
-?>
