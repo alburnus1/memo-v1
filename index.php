@@ -23,8 +23,6 @@ if (isset($_SESSION['user'])) {
         if (isset($res['status']) && $res['status'] === 'completed') {
             $texto = $conn->real_escape_string($res['text']);
             $conn->query("UPDATE consultas SET diagnostico = 'Consulta Médica', indicaciones = '$texto' WHERE id = $id_db");
-        } elseif (isset($res['status']) && $res['status'] === 'error') {
-            $conn->query("UPDATE consultas SET diagnostico = 'Error de Audio', indicaciones = 'No se pudo procesar la grabación.' WHERE id = $id_db");
         }
     }
 }
@@ -40,17 +38,14 @@ if (isset($_SESSION['user'])) {
         :root { --dark: #121826; --accent: #4361ee; --red: #ef233c; --yellow: #fab005; }
         body { font-family: 'Inter', sans-serif; background: #fdfdfd; margin: 0; padding: 20px; color: #2b2d42; }
         
-        /* Navbar */
         .nav-header { display: flex; justify-content: space-between; align-items: center; max-width: 450px; margin: 0 auto 20px auto; }
         .logo { font-weight: 800; font-size: 22px; letter-spacing: -1.5px; margin: 0; }
         .btn-logout { text-decoration: none; color: #8e8e93; font-size: 11px; font-weight: 700; background: #f0f0f0; padding: 6px 12px; border-radius: 10px; text-transform: uppercase; }
 
-        /* Grabador */
         .hero { background: var(--dark); color: white; padding: 40px 20px; border-radius: 28px; text-align: center; margin-bottom: 25px; }
         .btn-rec { width: 75px; height: 75px; background: var(--red); border-radius: 50%; border: 4px solid rgba(255,255,255,0.2); cursor: pointer; transition: 0.3s; outline: none; }
         .btn-rec.recording { background: #2ecc71; animation: pulse 1.5s infinite; }
         
-        /* Cards */
         .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 15px; border: 1px solid #f0f0f0; cursor: pointer; transition: 0.2s; }
         .card.loading { border: 1px solid #ffe066; background: #fffcf0; cursor: default; }
         
@@ -78,7 +73,7 @@ if (isset($_SESSION['user'])) {
         <?php if(isset($_SESSION['user'])): ?>
             <a href="logout.php" class="btn-logout">Cerrar Sesión</a>
         <?php else: ?>
-            <span style="font-size: 12px; color: #bbb;">Modo Invitado</span>
+            <span style="font-size: 12px; color: #bbb; font-weight: 600;">SIN CUENTA</span>
         <?php endif; ?>
     </nav>
 
@@ -117,7 +112,7 @@ if (isset($_SESSION['user'])) {
                 echo '<p style="text-align: center; color: #bbb; margin-top: 40px;">No tienes notas aún.</p>';
             endif;
         else: ?>
-            <p style="text-align: center; color: #bbb; margin-top: 40px;">Graba algo para comenzar.</p>
+            <p style="text-align: center; color: #bbb; margin-top: 40px;">Las notas que grabes aparecerán aquí.</p>
         <?php endif; ?>
     </div>
 </div>
@@ -125,14 +120,14 @@ if (isset($_SESSION['user'])) {
 <div id="modalRegistro">
     <div class="modal-card">
         <span style="font-weight:900; font-size:26px; letter-spacing:-1.5px; display:block; margin-bottom:10px;">memo.</span>
-        <h2 style="font-size:19px; font-weight:700; margin-bottom:8px;">¡Audio grabado!</h2>
-        <p style="color:#8e8e93; font-size:14px; margin-bottom:25px; line-height:1.4;">Identifícate para guardar esta nota de forma segura en tu historial.</p>
+        <h2 style="font-size:19px; font-weight:700; margin-bottom:8px;">¡Audio recibido!</h2>
+        <p style="color:#8e8e93; font-size:14px; margin-bottom:25px; line-height:1.4;">Identifícate para guardar esta nota de forma segura.</p>
         
         <input type="text" id="reg_nombre" placeholder="Tu nombre">
         <input type="email" id="reg_email" placeholder="tu@email.com">
         <input type="password" id="reg_pass" placeholder="Crea una contraseña">
         
-        <button onclick="registrarYSubir()" class="btn-modal">Guardar y ver resultado</button>
+        <button onclick="registrarYSubir()" id="btnModalRegistro" class="btn-modal">Guardar y ver resultado</button>
     </div>
 </div>
 
@@ -153,14 +148,12 @@ async function toggleRecord() {
             mr.ondataavailable = e => chunks.push(e.data);
             
             mr.onstop = async () => {
-                status.innerText = "Audio listo...";
+                status.innerText = "Audio capturado...";
                 audioBlobTemporal = new Blob(chunks, { type: 'audio/wav' });
                 
                 if (!usuarioLogueado) {
-                    // Bloqueamos y pedimos registro
                     document.getElementById('modalRegistro').style.display = 'flex';
                 } else {
-                    // Usuario logueado, subimos de inmediato
                     finalizarSubida(audioBlobTemporal);
                 }
             };
@@ -174,7 +167,7 @@ async function toggleRecord() {
         mr.stop();
         isRecording = false;
         btn.classList.remove('recording');
-        status.innerText = "Finalizando...";
+        status.innerText = "Procesando...";
     }
 }
 
@@ -182,47 +175,65 @@ async function finalizarSubida(blob) {
     const status = document.getElementById('status');
     const btn = document.getElementById('btn');
     
-    status.innerText = "Enviando a la nube...";
+    status.innerText = "Subiendo nota...";
     btn.style.opacity = "0.3";
     btn.disabled = true;
 
     const fd = new FormData();
     fd.append('audio', blob);
     
-    await fetch('upload_audio.php', { method: 'POST', body: fd });
-    location.reload();
+    try {
+        await fetch('upload_audio.php', { method: 'POST', body: fd });
+        location.reload();
+    } catch (e) {
+        alert("Error al subir audio.");
+        btn.disabled = false;
+        btn.style.opacity = "1";
+    }
 }
 
 async function registrarYSubir() {
     const nom = document.getElementById('reg_nombre').value;
     const mail = document.getElementById('reg_email').value;
     const pass = document.getElementById('reg_pass').value;
+    const btnM = document.getElementById('btnModalRegistro');
 
-    if (!mail || !pass) { alert("Completa los datos."); return; }
+    if (!mail || !pass) { alert("Completa correo y contraseña."); return; }
+
+    btnM.innerText = "Validando...";
+    btnM.disabled = true;
 
     const fd = new FormData();
     fd.append('nombre', nom);
     fd.append('email', mail);
     fd.append('password', pass);
 
-    // Llamamos a tu archivo de registro AJAX
-    const resp = await fetch('registro_ajax.php', { method: 'POST', body: fd });
-    const data = await resp.json();
+    try {
+        const resp = await fetch('registro_ajax.php', { method: 'POST', body: fd });
+        const data = await resp.json();
 
-    if (data.success) {
-        usuarioLogueado = true;
-        document.getElementById('modalRegistro').style.display = 'none';
-        
-        // Ahora que hay sesión, subimos el audio que quedó en espera
-        if (audioBlobTemporal) {
-            finalizarSubida(audioBlobTemporal);
+        if (data.success) {
+            usuarioLogueado = true;
+            document.getElementById('modalRegistro').style.display = 'none';
+            if (audioBlobTemporal) {
+                finalizarSubida(audioBlobTemporal);
+            } else {
+                location.reload();
+            }
+        } else {
+            alert(data.message || "Error al registrar.");
+            btnM.innerText = "Guardar y ver resultado";
+            btnM.disabled = false;
         }
-    } else {
-        alert(data.message || "Error al registrar.");
+    } catch (e) {
+        console.error(e);
+        alert("Error de conexión con el servidor.");
+        btnM.innerText = "Guardar y ver resultado";
+        btnM.disabled = false;
     }
 }
 
-// Recarga automática mejorada
+// Recarga automática
 if (document.body.innerText.includes("ANALIZANDO")) {
     setTimeout(() => { location.reload(); }, 5000);
 }
