@@ -5,7 +5,7 @@ session_start();
 // Tu API KEY de AssemblyAI
 $apiKey = "19aa781dc1f7406ba58faece251dc77e"; 
 
-// --- ACTUALIZADOR SEGURO (Solo procesa lo del usuario logueado) ---
+// --- ACTUALIZADOR DE ESTADO (Procesa audios pendientes del usuario logueado) ---
 if (isset($_SESSION['user'])) {
     $uid = $_SESSION['user']['id'];
     $pendientes = $conn->query("SELECT id, indicaciones FROM consultas WHERE diagnostico = 'Procesando...' AND usuario_id = $uid");
@@ -37,43 +37,34 @@ if (isset($_SESSION['user'])) {
     <style>
         :root { --dark: #121826; --accent: #4361ee; --red: #ef233c; --yellow: #fab005; }
         body { font-family: 'Inter', sans-serif; background: #fdfdfd; margin: 0; padding: 20px; color: #2b2d42; }
-        
         .nav-header { display: flex; justify-content: space-between; align-items: center; max-width: 450px; margin: 0 auto 20px auto; }
         .logo { font-weight: 800; font-size: 22px; letter-spacing: -1.5px; margin: 0; }
         .btn-logout { text-decoration: none; color: #8e8e93; font-size: 11px; font-weight: 700; background: #f0f0f0; padding: 6px 12px; border-radius: 10px; text-transform: uppercase; }
-
         .hero { background: var(--dark); color: white; padding: 40px 20px; border-radius: 28px; text-align: center; margin-bottom: 25px; }
         .btn-rec { width: 75px; height: 75px; background: var(--red); border-radius: 50%; border: 4px solid rgba(255,255,255,0.2); cursor: pointer; transition: 0.3s; outline: none; }
         .btn-rec.recording { background: #2ecc71; animation: pulse 1.5s infinite; }
-        
-        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 15px; border: 1px solid #f0f0f0; cursor: pointer; transition: 0.2s; }
-        .card.loading { border: 1px solid #ffe066; background: #fffcf0; cursor: default; }
-        
+        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 15px; border: 1px solid #f0f0f0; cursor: pointer; }
+        .card.loading { border: 1px solid #ffe066; background: #fffcf0; }
         .pill { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 8px; background: #edf2f4; color: var(--accent); }
         .pill.waiting { background: var(--yellow); color: #fff; }
-        
         .spinner { width: 18px; height: 18px; border: 2px solid #f3f3f3; border-top: 2px solid var(--yellow); border-radius: 50%; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
-        
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(46, 204, 113, 0); } 100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
-
-        /* Modal Registro */
-        #modalRegistro { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.97); z-index:99999; flex-direction:column; align-items:center; justify-content:center; padding:20px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-        .modal-card { width:100%; max-width:360px; background:white; padding:40px 25px; border-radius:32px; box-shadow: 0 20px 60px rgba(0,0,0,0.1); text-align:center; box-sizing: border-box; }
+        #modalRegistro { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.97); z-index:99999; flex-direction:column; align-items:center; justify-content:center; padding:20px; backdrop-filter: blur(8px); }
+        .modal-card { width:100%; max-width:360px; background:white; padding:40px 25px; border-radius:32px; box-shadow: 0 20px 60px rgba(0,0,0,0.1); text-align:center; }
         .modal-card input { width: 100%; padding: 16px; margin-bottom: 12px; border-radius: 14px; border: 1px solid #f0f0f0; background: #f9f9f9; font-size: 16px; outline: none; box-sizing: border-box; }
-        .btn-modal { width:100%; padding: 18px; background:var(--accent); color:white; border:none; border-radius:18px; font-weight:700; font-size:16px; cursor:pointer; margin-top: 10px; }
+        .btn-modal { width:100%; padding: 18px; background:var(--accent); color:white; border:none; border-radius:18px; font-weight:700; font-size:16px; cursor:pointer; }
     </style>
 </head>
 <body>
 
 <div style="max-width: 450px; margin: auto;">
-    
     <nav class="nav-header">
         <h1 class="logo">memo.</h1>
         <?php if(isset($_SESSION['user'])): ?>
             <a href="logout.php" class="btn-logout">Cerrar Sesión</a>
         <?php else: ?>
-            <span style="font-size: 12px; color: #bbb; font-weight: 600;">SIN CUENTA</span>
+            <span style="font-size: 12px; color: #bbb; font-weight: 600;">MODO INVITADO</span>
         <?php endif; ?>
     </nav>
 
@@ -95,8 +86,7 @@ if (isset($_SESSION['user'])) {
                      <?php if(!$is_loading) { ?> onclick="window.location='detalle.php?id=<?php echo $row['id']; ?>'" <?php } ?>>
                     <?php if ($is_loading): ?>
                         <span class="pill waiting">⏳ ANALIZANDO</span>
-                        <h3 style="margin: 12px 0 6px; color: #856404;"><span class="spinner"></span> Procesando audio...</h3>
-                        <p style="color: #666; font-size: 14px;">Estamos redactando tu ficha médica.</p>
+                        <h3 style="margin: 12px 0 6px; color: #856404;"><span class="spinner"></span> Procesando...</h3>
                     <?php else: ?>
                         <span class="pill">Consulta Médica</span>
                         <h3 style="margin: 12px 0 6px;"><?php echo htmlspecialchars($row['diagnostico']); ?></h3>
@@ -104,32 +94,23 @@ if (isset($_SESSION['user'])) {
                             <?php echo htmlspecialchars($row['indicaciones']); ?>
                         </p>
                     <?php endif; ?>
-                    <div style="font-size: 10px; color: #bbb; margin-top: 10px;">📅 <?php echo $row['fecha']; ?></div>
                 </div>
-        <?php 
-                endwhile; 
-            else:
-                echo '<p style="text-align: center; color: #bbb; margin-top: 40px;">No tienes notas aún.</p>';
-            endif;
-        else: ?>
-            <p style="text-align: center; color: #bbb; margin-top: 40px;">Las notas que grabes aparecerán aquí.</p>
-        <?php endif; ?>
+        <?php endwhile; else: echo '<p style="text-align:center; color:#bbb;">Sin notas aún.</p>'; endif;
+        else: echo '<p style="text-align:center; color:#bbb;">Graba algo para comenzar.</p>'; endif; ?>
     </div>
 </div>
 
 <div id="modalRegistro">
     <div class="modal-card">
         <span style="font-weight:900; font-size:26px; letter-spacing:-1.5px; display:block; margin-bottom:10px;">memo.</span>
-        <h2 style="font-size:19px; font-weight:700; margin-bottom:8px;">¡Audio recibido!</h2>
-        <p style="color:#8e8e93; font-size:14px; margin-bottom:25px; line-height:1.4;">Identifícate para guardar esta nota de forma segura.</p>
+        <h2 style="font-size:19px; margin-bottom:8px;">¡Audio grabado!</h2>
+        <p style="color:#8e8e93; font-size:14px; margin-bottom:25px;">Regístrate para guardar tu nota.</p>
         
-        <input type="text" id="reg_nombre" placeholder="Tu nombre">
-        <input type="email" id="reg_email" placeholder="tu@email.com">
-        <input type="password" id="reg_pass" placeholder="Crea una contraseña">
+        <input type="text" id="reg_nombre" placeholder="Nombre">
+        <input type="email" id="reg_email" placeholder="Email">
+        <input type="password" id="reg_pass" placeholder="Contraseña">
         
-       <button type="button" onclick="registrarYSubir()" id="btnModalRegistro" class="btn-modal">
-    Guardar y ver resultado
-</button>
+        <button type="button" onclick="registrarYSubir()" id="btnModalRegistro" class="btn-modal">Guardar nota</button>
     </div>
 </div>
 
@@ -141,30 +122,25 @@ var usuarioLogueado = <?php echo isset($_SESSION['user']) ? 'true' : 'false'; ?>
 async function toggleRecord() {
     const btn = document.getElementById('btn');
     const status = document.getElementById('status');
-
     if (!isRecording) {
         try {
             const s = await navigator.mediaDevices.getUserMedia({ audio: true });
             mr = new MediaRecorder(s);
             chunks = [];
             mr.ondataavailable = e => chunks.push(e.data);
-            
-            mr.onstop = async () => {
-                status.innerText = "Audio capturado...";
+            mr.onstop = () => {
                 audioBlobTemporal = new Blob(chunks, { type: 'audio/wav' });
-                
                 if (!usuarioLogueado) {
                     document.getElementById('modalRegistro').style.display = 'flex';
                 } else {
                     finalizarSubida(audioBlobTemporal);
                 }
             };
-
             mr.start();
             isRecording = true;
             btn.classList.add('recording');
-            status.innerText = "Grabando... Toca para parar";
-        } catch(e) { alert("Acceso al micrófono denegado."); }
+            status.innerText = "Grabando...";
+        } catch(e) { alert("Error de micrófono"); }
     } else {
         mr.stop();
         isRecording = false;
@@ -174,24 +150,10 @@ async function toggleRecord() {
 }
 
 async function finalizarSubida(blob) {
-    const status = document.getElementById('status');
-    const btn = document.getElementById('btn');
-    
-    status.innerText = "Subiendo nota...";
-    btn.style.opacity = "0.3";
-    btn.disabled = true;
-
     const fd = new FormData();
     fd.append('audio', blob);
-    
-    try {
-        await fetch('upload_audio.php', { method: 'POST', body: fd });
-        location.reload();
-    } catch (e) {
-        alert("Error al subir audio.");
-        btn.disabled = false;
-        btn.style.opacity = "1";
-    }
+    await fetch('upload_audio.php', { method: 'POST', body: fd });
+    location.reload();
 }
 
 async function registrarYSubir() {
@@ -200,8 +162,7 @@ async function registrarYSubir() {
     const pass = document.getElementById('reg_pass').value;
     const btnM = document.getElementById('btnModalRegistro');
 
-    if (!mail || !pass) { alert("Completa correo y contraseña."); return; }
-
+    if (!mail || !pass) { alert("Completa los datos"); return; }
     btnM.innerText = "Validando...";
     btnM.disabled = true;
 
@@ -213,29 +174,22 @@ async function registrarYSubir() {
     try {
         const resp = await fetch('registro_ajax.php', { method: 'POST', body: fd });
         const data = await resp.json();
-
         if (data.success) {
             usuarioLogueado = true;
             document.getElementById('modalRegistro').style.display = 'none';
-            if (audioBlobTemporal) {
-                finalizarSubida(audioBlobTemporal);
-            } else {
-                location.reload();
-            }
+            if (audioBlobTemporal) finalizarSubida(audioBlobTemporal);
+            else location.reload();
         } else {
-            alert(data.message || "Error al registrar.");
-            btnM.innerText = "Guardar y ver resultado";
+            alert(data.message);
+            btnM.innerText = "Guardar nota";
             btnM.disabled = false;
         }
     } catch (e) {
-        console.error(e);
-        alert("Error de conexión con el servidor.");
-        btnM.innerText = "Guardar y ver resultado";
+        alert("Error de conexión");
         btnM.disabled = false;
     }
 }
 
-// Recarga automática
 if (document.body.innerText.includes("ANALIZANDO")) {
     setTimeout(() => { location.reload(); }, 5000);
 }
